@@ -1,71 +1,74 @@
 # Neural Network Solver for Control Systems
 
-A PyTorch-based neural network solver for control system stabilization using pole placement and LMI (Linear Matrix Inequality) optimization.
+A PyTorch and MATLAB based project for observer design and stabilization of uncertain dynamic systems.
 
 ## Project Structure
 
-```
+```text
 Code/
-├── config/                     # Configuration files
-│   ├── __init__.py
-│   └── config.py               # System matrices and hyperparameters
-├── src/                        # Source code
-│   ├── __init__.py
-│   ├── model/                  # Neural network architectures
-│   │   ├── __init__.py
-│   │   └── Neural_Architecture.py
-│   ├── train/                  # Training methods
-│   │   ├── __init__.py
-│   │   ├── Pretrain.py         # Pre-training stage
-│   │   ├── Tuning.py           # Fine-tuning stage
-│   │   └── Two_Stage_Training.py
-│   └── utils/                  # Utility modules (MATLAB .m files)
-│       ├── __init__.py
-│       ├── Solver.py           # Python interface to MATLAB
-│       ├── Pole_Placement.m    # Pole placement algorithm
-│       ├── Solver.m            # LMI-based NN solver
-│       ├── LMI_verify.m        # LMI verification
-│       ├── Hurwitz.m           # Hurwitz stability check
-│       └── NN_paras.m          # NN parameter computation
-├── Weights/                    # Saved weights and outputs (auto-created)
-├── main.py                     # Entry point
-└── readme.md                   # This file
+|-- config/
+|   |-- __init__.py
+|   `-- config.py
+|-- scripts/
+|   |-- run_solver_linear.sh
+|   |-- run_solver_nn.sh
+|   |-- run_train_small.sh
+|   `-- run_train_large.sh
+|-- src/
+|   |-- model/
+|   |   `-- Neural_Architecture.py
+|   |-- train/
+|   |   |-- Pretrain.py
+|   |   |-- Tuning.py
+|   |   `-- Two_Stage_Training.py
+|   `-- utils/
+|       |-- Solver.py
+|       |-- checkpoints.py
+|       |-- Pole_Placement.m
+|       |-- Solver.m
+|       |-- LMI_verify.m
+|       |-- Hurwitz.m
+|       `-- NN_paras.m
+|-- Checkpoints/
+|-- main.py
+`-- readme.md
 ```
 
-## Installation
-
-### Requirements
+## Requirements
 
 - Python 3.8+
 - PyTorch
 - NumPy
 - Pandas
-- MATLAB with MATLAB Engine for Python
+- MATLAB
+- MATLAB Engine for Python
 
-### Install Python Dependencies
+## Installation
+
+Install Python dependencies:
 
 ```bash
 pip install torch numpy pandas
 ```
 
-### Install MATLAB Engine (Optional - required for Solver_Linear/Solver_NN)
+Install MATLAB Engine for Python if you want to use `Solver_Linear` or `Solver_NN`:
 
 ```bash
 cd $MATLABROOT/extern/engines/python
 python setup.py install
 ```
 
-**Note:** The MATLAB `.m` files are located in `src/utils/`. The solver automatically adds this directory to the MATLAB path at runtime.
-
 ## Usage
 
-### Command Line
+Run with the solver type configured in `config/config.py`:
 
 ```bash
-# Run with default configuration (solver_type from config/config.py)
 python main.py
+```
 
-# Override solver type via command line
+Override the solver type from the command line:
+
+```bash
 python main.py --solver_type Solver_Linear
 python main.py --solver_type Solver_NN
 python main.py --solver_type Train_Small_NN
@@ -74,89 +77,94 @@ python main.py --solver_type Train_Large_NN
 
 ## Configuration
 
-Edit `config/config.py` to customize system matrices and hyperparameters:
+Edit `config/config.py` to set the system matrices and hyperparameters.
 
-### System Matrices (State-Space Model)
+### System Matrices
 
 ```python
-A = np.array([...])  # System matrix (4x4)
-B = np.array([...])  # Input matrix (4x3)
-C = np.array([...])  # Output matrix (5x4)
-epsilon = 0.01       # Gain coefficient
+A = np.array([...])
+B = np.array([...])
+C = np.array([...])
+epsilon = 0.01
 ```
 
 ### Solver Parameters
 
 ```python
-poles = np.array([-0.5, -1+0.2j, -1-0.2j, ...])  # Desired closed-loop poles
-nodes = np.array([3, 3, 3])                       # NN hidden layer sizes
-max_iter = 10                                     # Max iterations for LMI solver
+poles = np.array([...])
+nodes = np.array([3, 3, 3])
+max_iter = 10
 ```
 
-### Training Hyperparameters
+### Training Parameters
 
 ```python
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-P = torch.tensor(np.diag((10, 1, 1, 1, 1, 1, 1, 1)), dtype=torch.float32) * 0.1
+P = torch.tensor(...)
 learning_rate = 0.01
 epochs_pretrain = 50000
 epochs_tuning = 10000
 ```
 
-### Solver Selection
+### Solver Type
 
 ```python
-solver_type = "Solver_Linear"  # Options:
-# "Solver_Linear"     - Linear pole placement via MATLAB
-# "Solver_NN"         - Neural network with MATLAB LMI
-# "Train_Small_NN"    - Two-stage training (small architecture)
-# "Train_Large_NN"    - Two-stage training (large architecture)
+solver_type = "Solver_Linear"
 ```
+
+Available options:
+
+- `Solver_Linear`
+- `Solver_NN`
+- `Train_Small_NN`
+- `Train_Large_NN`
 
 ## Methods
 
-### Solver_Linear / Solver_NN
+### `Solver_Linear`
 
-Uses MATLAB for:
-1. Pole placement to compute initial gain matrix L
-2. LMI optimization for neural network weights (Solver_NN only)
+Computes the observer gain matrix `L` with MATLAB pole placement.
 
-### Train_Small_NN / Train_Large_NN
+### `Solver_NN`
 
-Two-stage training process:
+1. Computes the observer gain matrix `L`
+2. Uses MATLAB LMI solving to obtain neural network layer weights
 
-1. **Pre-training** (`Pretrain.py`): Robust training with random perturbations
-   - Optimizes one-step Lyapunov loss
-   - Initializes network weights
+### `Train_Small_NN` and `Train_Large_NN`
 
-2. **Fine-tuning** (`Tuning.py`): Direct LMI optimization
-   - Loads pre-trained weights
-   - Optimizes eigenvalue constraints
-   - Saves final weights to `Weights/`
+Training uses two stages:
 
-**Architecture Comparison:**
+1. `Pretrain.py`
+   - trains the pointwise neural network with random perturbation samples
+   - saves a pretraining checkpoint
+2. `Tuning.py`
+   - loads the pretraining checkpoint
+   - optimizes the LMI related objective
+   - saves a tuning checkpoint
+
+## Architectures
 
 | Model | Layers | Hidden Units |
-|-------|--------|--------------|
-| Small | 4      | 32 → 64 → 32 → 32 |
-| Large | 8      | 32 → 64 → 64 → 128 → 128 → 64 → 64 → 32 |
+|------|------|------|
+| Small | 4 | 32 -> 64 -> 32 -> 32 |
+| Large | 8 | 32 -> 64 -> 64 -> 128 -> 128 -> 64 -> 64 -> 32 |
 
-## Output
+## Outputs
 
-Weights are saved to `Weights/` (directory is auto-created if it doesn't exist):
+Generated checkpoints are stored in `Checkpoints/`.
+
+Typical files include:
 
 | File | Description |
-|------|-------------|
-| `L.csv` | Gain matrix from pole placement (Solver_Linear/Solver_NN) |
-| `Weight_1.csv` ~ `Weight_5.csv` | Small network weights (4 layers) |
-| `Weight_0.csv` ~ `Weight_9.csv` | Large network weights (9 layers + L matrix) |
-| `T.csv` | Lagrange multiplier diagonal matrix (from Tuning) |
+|------|------|
+| `train_small_nn_pretrain.pt` | Small model pretraining result |
+| `train_small_nn_tuning.pt` | Small model tuning result |
+| `train_large_nn_pretrain.pt` | Large model pretraining result |
+| `train_large_nn_tuning.pt` | Large model tuning result |
+| `solver_linear.pt` | Pole placement result |
+| `solver_nn.pt` | MATLAB solver result |
 
-**Note:** For `Train_Large_NN`, `Weight_0.csv` corresponds to the output layer L matrix, while `Weight_1.csv` through `Weight_9.csv` are the hidden layer weights.
-
-## Citing
-
-This code implements neural network-based stabilization for linear control systems using LMI constraints and Lyapunov stability theory.
+Training checkpoints store the model weights together with optimizer state, epoch, and loss.
 
 ## License
 

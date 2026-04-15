@@ -1,12 +1,10 @@
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
-import os
 
-# Project root directory (parent of src)
-_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_weights_dir = os.path.join(_project_root, 'Weights')
+
+def _random_parameter(shape, device=None):
+    return nn.Parameter(torch.tensor(np.random.normal(0, 1, size=shape), dtype=torch.float32, device=device))
 
 
 class NN_Small_Point(nn.Module):
@@ -15,11 +13,11 @@ class NN_Small_Point(nn.Module):
         self.input_size = input_size
         self.output_size = output_size
         self.P = P
-        self.weights1 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(32, output_size)), dtype=torch.float32))
-        self.weights2 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(64, 32)), dtype=torch.float32))
-        self.weights3 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(32, 64)), dtype=torch.float32))
-        self.weights4 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(input_size * 2, 32)), dtype=torch.float32))
-        self.weights5 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(input_size * 2, output_size)), dtype=torch.float32))
+        self.weights1 = _random_parameter((32, output_size))
+        self.weights2 = _random_parameter((64, 32))
+        self.weights3 = _random_parameter((32, 64))
+        self.weights4 = _random_parameter((input_size * 2, 32))
+        self.weights5 = _random_parameter((input_size * 2, output_size))
 
     def forward(self, input_data, C):
         input_data = C @ input_data.reshape(self.input_size * 2, 1)
@@ -49,16 +47,16 @@ class NN_Large_Point(nn.Module):
         self.input_size = input_size
         self.output_size = output_size
         self.P = P
-        self.weights1 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(32, output_size)), dtype=torch.float32))
-        self.weights2 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(64, 32)), dtype=torch.float32))
-        self.weights3 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(64, 64)), dtype=torch.float32))
-        self.weights4 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(128, 64)), dtype=torch.float32))
-        self.weights5 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(128, 128)), dtype=torch.float32))
-        self.weights6 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(64, 128)), dtype=torch.float32))
-        self.weights7 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(64, 64)), dtype=torch.float32))
-        self.weights8 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(32, 64)), dtype=torch.float32))
-        self.weights9 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(input_size * 2, 32)), dtype=torch.float32))
-        self.weights0 = nn.Parameter(torch.tensor(np.random.normal(0, 1, size=(input_size * 2, output_size)), dtype=torch.float32))
+        self.weights1 = _random_parameter((32, output_size))
+        self.weights2 = _random_parameter((64, 32))
+        self.weights3 = _random_parameter((64, 64))
+        self.weights4 = _random_parameter((128, 64))
+        self.weights5 = _random_parameter((128, 128))
+        self.weights6 = _random_parameter((64, 128))
+        self.weights7 = _random_parameter((64, 64))
+        self.weights8 = _random_parameter((32, 64))
+        self.weights9 = _random_parameter((input_size * 2, 32))
+        self.weights0 = _random_parameter((input_size * 2, output_size))
 
     def forward(self, input_data, C):
         input_data = C @ input_data.reshape(self.input_size * 2, 1)
@@ -108,17 +106,16 @@ off_side_large = [0,
                   32 + 64 + 64 + 128 + 128 + 64 + 64 + 32]
 
 class NN_Small_Tuning(nn.Module):
-    def __init__(self, input_size, device):
+    def __init__(self, input_size, output_size, device):
         super(NN_Small_Tuning, self).__init__()
         self.input_size = input_size
-        self.device = device
-        self.weights1 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_1.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights2 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_2.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights3 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_3.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights4 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_4.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights5 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_5.csv'), header=None)), dtype=torch.float32).to(device))
-        T_lambda_init = torch.tensor(np.random.normal(0, 1, size=32 + 64 + 32), dtype=torch.float32).to(device)
-        self.T_lambda = nn.Parameter(T_lambda_init)
+        self.device = device if device is not None else torch.device('cpu')
+        self.weights1 = _random_parameter((32, output_size), self.device)
+        self.weights2 = _random_parameter((64, 32), self.device)
+        self.weights3 = _random_parameter((32, 64), self.device)
+        self.weights4 = _random_parameter((input_size * 2, 32), self.device)
+        self.weights5 = _random_parameter((input_size * 2, output_size), self.device)
+        self.T_lambda = _random_parameter((32 + 64 + 32,), self.device)
 
     def forward(self, A0, C, P):
         N_piomega = torch.zeros((self.input_size * 2, off_side_small[3]), device=self.device)
@@ -146,22 +143,21 @@ class NN_Small_Tuning(nn.Module):
 
 
 class NN_Large_Tuning(nn.Module):
-    def __init__(self, input_size, device):
+    def __init__(self, input_size, output_size, device):
         super(NN_Large_Tuning, self).__init__()
         self.input_size = input_size
-        self.device = device
-        self.weights1 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_1.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights2 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_2.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights3 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_3.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights4 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_4.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights5 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_5.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights6 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_6.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights7 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_7.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights8 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_8.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights9 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_9.csv'), header=None)), dtype=torch.float32).to(device))
-        self.weights0 = nn.Parameter(torch.tensor(np.array(pd.read_csv(os.path.join(_weights_dir, 'Weight_0.csv'), header=None)), dtype=torch.float32).to(device))
-        T_lambda_init = torch.tensor(np.random.normal(0, 1, size=32 + 64 + 64 + 128 + 128 + 64 + 64 + 32), dtype=torch.float32).to(device)
-        self.T_lambda = nn.Parameter(T_lambda_init)
+        self.device = device if device is not None else torch.device('cpu')
+        self.weights1 = _random_parameter((32, output_size), self.device)
+        self.weights2 = _random_parameter((64, 32), self.device)
+        self.weights3 = _random_parameter((64, 64), self.device)
+        self.weights4 = _random_parameter((128, 64), self.device)
+        self.weights5 = _random_parameter((128, 128), self.device)
+        self.weights6 = _random_parameter((64, 128), self.device)
+        self.weights7 = _random_parameter((64, 64), self.device)
+        self.weights8 = _random_parameter((32, 64), self.device)
+        self.weights9 = _random_parameter((input_size * 2, 32), self.device)
+        self.weights0 = _random_parameter((input_size * 2, output_size), self.device)
+        self.T_lambda = _random_parameter((32 + 64 + 64 + 128 + 128 + 64 + 64 + 32,), self.device)
 
     def forward(self, A0, C, P):
         N_piomega = torch.zeros((self.input_size * 2, off_side_large[8]), device=self.device)

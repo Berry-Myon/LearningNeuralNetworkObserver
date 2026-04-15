@@ -20,7 +20,7 @@ C = np.array([[1., 0., 0., 0.],
 epsilon = 0.01
 
 # Type of Solver
-solver_type = "Solver_NN"  # "Solver_Linear" or "Solver_NN" or "Train_Small_NN" or "Train_Large_NN"
+solver_type = "Train_Small_NN"  # "Solver_Linear" or "Solver_NN" or "Train_Small_NN" or "Train_Large_NN"
 
 # Solver Parameters
 poles = np.array([-0.5, -1+0.2j, -1-0.2j, -1.5+0.5j, -1.5-0.5j, -2+0.2j, -2-0.2j, -2.5])

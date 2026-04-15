@@ -1,12 +1,7 @@
 from model.Neural_Architecture import NN_Small_Tuning, NN_Large_Tuning
+from utils.checkpoints import load_pretrained_parameters, save_checkpoint
 import torch
 import torch.optim as optim
-import pandas as pd
-import os
-
-# Project root directory (parent of src)
-_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_weights_dir = os.path.join(_project_root, 'Weights')
 
 
 def loss_function(A, T_lambda=None, weights=None, device=None):
@@ -47,30 +42,39 @@ class Tuning:
 
     def init_model(self, model=""):
         if model == "Train_Small_NN":
-            self.model = NN_Small_Tuning(self.input_size, self.device)
+            self.model = NN_Small_Tuning(self.input_size, self.output_size, self.device)
         else:
-            self.model = NN_Large_Tuning(self.input_size, self.device)
+            self.model = NN_Large_Tuning(self.input_size, self.output_size, self.device)
             self.weight_len = 10
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+        checkpoint_source = load_pretrained_parameters(self.model, model, self.device)
+        print(f'Loaded pretrain weights from {checkpoint_source}')
 
     def tuning(self):
+        loss = None
+        reported_loss = None
+        last_epoch = -1
         for epoch in range(self.epochs):
+            last_epoch = epoch
             self.optimizer.zero_grad()
             A0 = self.model(self.A_epsilon, self.C_epsilon, self.P)
             if epoch >= 8000 and min(torch.real(torch.linalg.eigvals(A0.detach().cpu())).numpy()) > 0.:
                 break
-            A0 -= torch.eye(len(A0)) * 1e-2
+            A0_with_margin = A0 - torch.eye(len(A0), device=A0.device, dtype=A0.dtype) * 1e-2
             T_l = self.model.get_T_lambda()
             weights = self.model.get_paras()
-            loss = loss_function(A0, T_l, weights)
+            loss = loss_function(A0_with_margin, T_l, weights, device=self.device)
+            reported_loss = loss_function(A0, T_l, weights, device=self.device)
             loss.backward()
             self.optimizer.step()
             if epoch % 100 == 0:
-                print(f'Epoch {epoch}/{self.epochs}, Loss: {loss.item()}')
-        for i in range(1, self.weight_len):
-            weight = getattr(self.model, f'weights{i}').detach().numpy()
-            df = pd.DataFrame(weight)
-            df.to_csv(os.path.join(_weights_dir, f'Weight_{i}.csv'), index=False, header=False)
-        Ts = self.model.get_T_lambda().detach().numpy()
-        df = pd.DataFrame(Ts)
-        df.to_csv(os.path.join(_weights_dir, 'T.csv'), index=False, header=False)
+                print(f'Epoch {epoch}/{self.epochs}, Loss: {reported_loss.item()}')
+        checkpoint_path = save_checkpoint(
+            'Train_Small_NN' if self.weight_len == 6 else 'Train_Large_NN',
+            'tuning',
+            self.model,
+            optimizer=self.optimizer,
+            epoch=last_epoch,
+            loss=reported_loss,
+        )
+        print(f'Tuning checkpoint saved to {checkpoint_path}')
