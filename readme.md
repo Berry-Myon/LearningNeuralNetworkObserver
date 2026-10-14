@@ -146,7 +146,7 @@ Training uses two stages:
 
 | Model | Layers | Hidden Units |
 |------|------|------|
-| Small | 4 | 32 -> 64 -> 32 -> 32 |
+| Small | 3 | 32 -> 64 -> 32 |
 | Large | 8 | 32 -> 64 -> 64 -> 128 -> 128 -> 64 -> 64 -> 32 |
 
 ## Outputs
